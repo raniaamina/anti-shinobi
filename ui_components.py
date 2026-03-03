@@ -8,6 +8,18 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon
 from qt_material import apply_stylesheet
 
+import sys
+import os
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 class NavButton(QPushButton):
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
@@ -141,7 +153,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Anti-Shinobi - Mobile Security & Analysis")
-        self.setWindowIcon(QIcon("resources/icon.png"))
+        self.setWindowIcon(QIcon(resource_path("resources/icon.png")))
         self.setMinimumSize(1000, 700)
         
         apply_stylesheet(self, theme='dark_teal.xml')
