@@ -705,6 +705,8 @@ class MainWindow(QMainWindow):
         self.net_table.verticalHeader().setVisible(False)
         self.net_table.setShowGrid(False)
         self.net_table.setAlternatingRowColors(True)
+        self.net_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.net_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.net_table.setStyleSheet("""
             QTableWidget {
                 background-color: #1A1A1A;

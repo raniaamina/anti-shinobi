@@ -143,14 +143,23 @@ class AntiShinobiApp:
     def on_net_connection_found(self, data):
         # Data contains {package, connection: {ip, port, domain}}
         row = self.window.net_table.rowCount()
-        # Check if package already exists to group or just append
-        # For real-time, we append new connections
         self.window.net_table.insertRow(row)
-        self.window.net_table.setItem(row, 0, QTableWidgetItem(data["package"]))
-        self.window.net_table.setItem(row, 1, QTableWidgetItem("...")) # Volumes come later
+        
+        pkg_item = QTableWidgetItem(data["package"])
+        pkg_item.setToolTip(data["package"])
+        self.window.net_table.setItem(row, 0, pkg_item)
+        
+        self.window.net_table.setItem(row, 1, QTableWidgetItem("..."))
         self.window.net_table.setItem(row, 2, QTableWidgetItem("..."))
-        self.window.net_table.setItem(row, 3, QTableWidgetItem(f"{data['connection']['ip']}:{data['connection']['port']}"))
-        self.window.net_table.setItem(row, 4, QTableWidgetItem(data["connection"]["domain"]))
+        
+        conn_str = f"{data['connection']['ip']}:{data['connection']['port']}"
+        conn_item = QTableWidgetItem(conn_str)
+        conn_item.setToolTip(conn_str)
+        self.window.net_table.setItem(row, 3, conn_item)
+        
+        dom_item = QTableWidgetItem(data["connection"]["domain"])
+        dom_item.setToolTip(data["connection"]["domain"])
+        self.window.net_table.setItem(row, 4, dom_item)
 
     def update_network_results(self, results):
         self.window.btn_start_network.setEnabled(True)
@@ -172,7 +181,9 @@ class AntiShinobiApp:
             if row_idx == -1:
                 row_idx = self.window.net_table.rowCount()
                 self.window.net_table.insertRow(row_idx)
-                self.window.net_table.setItem(row_idx, 0, QTableWidgetItem(label))
+                pkg_item = QTableWidgetItem(label)
+                pkg_item.setToolTip(label)
+                self.window.net_table.setItem(row_idx, 0, pkg_item)
             
             # Update volumes
             self.window.net_table.setItem(row_idx, 1, QTableWidgetItem(f"{res['upload'] / 1024:.2f} KB"))
@@ -183,8 +194,13 @@ class AntiShinobiApp:
             ips = ", ".join([f"{c['ip']}:{c['port']}" for c in conns]) if conns else "None"
             domains = ", ".join([c['domain'] for c in conns if c['domain'] != "Unknown"]) if conns else "None"
             
-            self.window.net_table.setItem(row_idx, 3, QTableWidgetItem(ips))
-            self.window.net_table.setItem(row_idx, 4, QTableWidgetItem(domains or "None"))
+            ips_item = QTableWidgetItem(ips)
+            ips_item.setToolTip(ips)
+            self.window.net_table.setItem(row_idx, 3, ips_item)
+            
+            dom_item = QTableWidgetItem(domains or "None")
+            dom_item.setToolTip(domains or "None")
+            self.window.net_table.setItem(row_idx, 4, dom_item)
 
     def refresh_devices(self):
         self.window.device_combo.clear()
