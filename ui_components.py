@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QFrame, QScrollArea, QStackedWidget, QComboBox,
                              QFileDialog, QMessageBox, QMenu, QCheckBox,
                              QTableWidget, QTableWidgetItem, QHeaderView,
-                             QSpinBox)
+                             QSpinBox, QAbstractItemView)
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon
 from qt_material import apply_stylesheet
@@ -689,6 +689,23 @@ class MainWindow(QMainWindow):
             QPushButton:disabled { background-color: #2D2D2D; color: #666; }
         """)
         control_layout.addWidget(self.btn_start_network)
+        
+        self.btn_export_net = QPushButton("EXPORT REPORT")
+        self.btn_export_net.setFixedWidth(150)
+        self.btn_export_net.setVisible(False)
+        self.btn_export_net.setStyleSheet("""
+            QPushButton {
+                background-color: #2D2D2D;
+                color: white;
+                font-weight: bold;
+                border: 1px solid #444;
+                border-radius: 6px;
+                padding: 10px;
+            }
+            QPushButton:hover { background-color: #3D3D3D; }
+        """)
+        control_layout.addWidget(self.btn_export_net)
+        
         layout.addWidget(control_frame)
         
         self.net_status_label = QLabel("")
@@ -700,8 +717,10 @@ class MainWindow(QMainWindow):
         # Results Table
         self.net_table = QTableWidget()
         self.net_table.setColumnCount(5)
-        self.net_table.setHorizontalHeaderLabels(["APP/PACKAGE", "UPLOAD", "DOWNLOAD", "REMOTE ADDRESS", "DOMAIN"])
+        self.net_table.setHorizontalHeaderLabels(["APP/PACKAGE", "TRAFFIC (UP/DOWN)", "REMOTE ADDRESS", "DOMAIN", "MARK"])
         self.net_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.net_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.net_table.setColumnWidth(4, 60)
         self.net_table.verticalHeader().setVisible(False)
         self.net_table.setShowGrid(False)
         self.net_table.setAlternatingRowColors(True)

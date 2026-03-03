@@ -1,10 +1,12 @@
+```python
 import sys
-import os
-import json
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox, QTableWidgetItem
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtWidgets import (
+    QApplication, QFileDialog, QMessageBox, QTableWidgetItem,
+    QWidget, QHBoxLayout, QCheckBox
+)
+from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from ui_components import MainWindow, RiskCard
 from scanner import SpywareScanner
 from report_gen import ReportGenerator
@@ -107,6 +109,7 @@ class AntiShinobiApp:
         
         # Network Connections
         self.window.btn_start_network.clicked.connect(self.start_network_monitor)
+        self.window.btn_export_net.clicked.connect(self.export_network_report)
         
         # Package DB Connections
         self.window.btn_db_add.clicked.connect(self.add_db_package)
@@ -125,6 +128,7 @@ class AntiShinobiApp:
         self.window.net_table.setRowCount(0)
         self.window.btn_start_network.setEnabled(False)
         self.window.btn_start_network.setText("MONITORING...")
+        self.window.btn_export_net.setVisible(False)
         self.window.net_status_label.setText("Preparing monitor...")
         self.window.net_status_label.setVisible(True)
         
@@ -149,23 +153,34 @@ class AntiShinobiApp:
         pkg_item.setToolTip(data["package"])
         self.window.net_table.setItem(row, 0, pkg_item)
         
-        self.window.net_table.setItem(row, 1, QTableWidgetItem("..."))
-        self.window.net_table.setItem(row, 2, QTableWidgetItem("..."))
+        # Merged Traffic column
+        self.window.net_table.setItem(row, 1, QTableWidgetItem("... / ... KB"))
         
         conn_str = f"{data['connection']['ip']}:{data['connection']['port']}"
         conn_item = QTableWidgetItem(conn_str)
         conn_item.setToolTip(conn_str)
-        self.window.net_table.setItem(row, 3, conn_item)
+        self.window.net_table.setItem(row, 2, conn_item)
         
         dom_item = QTableWidgetItem(data["connection"]["domain"])
         dom_item.setToolTip(data["connection"]["domain"])
-        self.window.net_table.setItem(row, 4, dom_item)
+        self.window.net_table.setItem(row, 3, dom_item)
+        
+        # Mark as suspicious checkbox
+        cb_container = QWidget()
+        cb_layout = QHBoxLayout(cb_container)
+        cb = QCheckBox()
+        cb_layout.addWidget(cb)
+        cb_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cb_layout.setContentsMargins(0,0,0,0)
+        self.window.net_table.setCellWidget(row, 4, cb_container)
 
     def update_network_results(self, results):
+        self.last_network_results = results
         self.window.btn_start_network.setEnabled(True)
         self.window.btn_start_network.setText("START MONITORING")
         self.window.net_status_label.setVisible(False)
         self.window.progress.setValue(0)
+        self.window.btn_export_net.setVisible(True)
         
         # Don't clear! Update existing rows or add missing ones with final volumes
         # This ensures real-time findings stay visible
