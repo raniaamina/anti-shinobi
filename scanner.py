@@ -1,6 +1,8 @@
 import os
 import json
 import time
+import socket
+import re
 from adbutils import adb
 from pyaxmlparser import APK
 
@@ -9,6 +11,7 @@ class SpywareScanner:
         self.db_path = db_path
         self.load_db()
         self.device = None
+        self._uid_cache = {}
         
         # Scoring Weights
         self.WEIGHTS = {
@@ -113,7 +116,132 @@ class SpywareScanner:
             findings.append({"path": apk_path, "type": "APK on storage"})
         return findings
 
-    def monitor_network(self, interval=30):
-        # Placeholder for netstat monitoring
-        # In a real app, we'd diff netstat output before and after
-        return "Network monitoring started..."
+    def _get_uid_for_package(self, package_name):
+        if package_name in self._uid_cache:
+            return self._uid_cache[package_name]
+        try:
+            res = self.device.shell(f"dumpsys package {package_name} | grep userId=").strip()
+            uid = re.search(r"userId=(\d+)", res).group(1)
+            self._uid_cache[package_name] = uid
+            return uid
+        except:
+            return None
+
+    def _get_network_stats(self):
+        """Returns map of UID -> {rx: bytes, tx: bytes}"""
+        stats = {}
+        try:
+            # dumpsys netstats --uid provides historical/total stats per app
+            output = self.device.shell("dumpsys netstats --uid")
+            # Look for lines like: ident=[...] uid=10112 set=DEFAULT tag=0x0 rxBytes=1234 txBytes=5678 ...
+            matches = re.findall(r"uid=(\d+) set=DEFAULT tag=0x0 .*? rxBytes=(\d+) txBytes=(\d+)", output)
+            for uid, rx, tx in matches:
+                uid = int(uid)
+                if uid not in stats:
+                    stats[uid] = {"rx": 0, "tx": 0}
+                stats[uid]["rx"] += int(rx)
+                stats[uid]["tx"] += int(tx)
+        except Exception as e:
+            print(f"Error fetching netstats: {e}")
+        return stats
+
+    def _get_active_connections(self):
+        """Returns map of UID -> list of (RemoteIP, Port)"""
+        connections = {}
+        try:
+            # Parse /proc/net/tcp and /proc/net/udp
+            for proto in ["tcp", "udp"]:
+                output = self.device.shell(f"cat /proc/net/{proto}")
+                lines = output.splitlines()[1:] # skip header
+                for line in lines:
+                    parts = line.split()
+                    if len(parts) < 8: continue
+                    
+                    remote_addr_hex = parts[2]
+                    uid = int(parts[7])
+                    
+                    # Convert hex IP:Port to string
+                    try:
+                        ip_hex, port_hex = remote_addr_hex.split(':')
+                        # IP is in little-endian hex
+                        ip = socket.inet_ntoa(bytes.fromhex(ip_hex)[::-1])
+                        port = int(port_hex, 16)
+                        
+                        if ip == "0.0.0.0" or ip == "127.0.0.1": continue
+                        
+                        if uid not in connections: connections[uid] = []
+                        connections[uid].append((ip, port))
+                    except: continue
+        except Exception as e:
+            print(f"Error fetching connections: {e}")
+        return connections
+
+    def monitor_network(self, duration=10, progress_callback=None, on_connection_found=None):
+        """Monitors network traffic for a specific duration."""
+        if not self.device: return []
+        
+        # 1. Map all UIDs to Packages first to be faster later
+        uid_to_pkg = {}
+        pkg_list = self.get_installed_packages()
+        for pkg in pkg_list:
+            uid = self._get_uid_for_package(pkg)
+            if uid: uid_to_pkg[int(uid)] = pkg
+
+        # 2. Get initial snapshots
+        start_stats = self._get_network_stats()
+        active_conn = {} # UID -> list of (IP, Port, Domain)
+        
+        # 3. Wait/Monitor
+        for i in range(duration):
+            remaining = duration - i
+            if progress_callback: 
+                progress_callback(int((i+1)/duration * 100), remaining)
+            
+            # Update active connections periodically during monitoring
+            new_conns = self._get_active_connections()
+            for uid, conns in new_conns.items():
+                if uid not in active_conn: active_conn[uid] = []
+                pkg = uid_to_pkg.get(uid, f"UID:{uid}")
+                
+                for ip, port in conns:
+                    # Check if already seen
+                    if any(c["ip"] == ip and c["port"] == port for c in active_conn[uid]):
+                        continue
+                        
+                    # New connection!
+                    domain = "Unknown"
+                    try:
+                        domain = socket.gethostbyaddr(ip)[0]
+                    except: pass
+                    
+                    conn_info = {"ip": ip, "port": port, "domain": domain}
+                    active_conn[uid].append(conn_info)
+                    
+                    # Live callback for immediate UI update
+                    if on_connection_found:
+                        on_connection_found({
+                            "package": pkg,
+                            "connection": conn_info
+                        })
+            
+            time.sleep(1)
+
+        # 4. Get final snapshot for volumes
+        end_stats = self._get_network_stats()
+        
+        # 5. Compile final results (volumes + all unique connections)
+        results = []
+        for uid, stats in end_stats.items():
+            rx_delta = stats["rx"] - start_stats.get(uid, {"rx": 0})["rx"]
+            tx_delta = stats["tx"] - start_stats.get(uid, {"tx": 0})["tx"]
+            
+            if rx_delta > 0 or tx_delta > 0 or uid in active_conn:
+                pkg = uid_to_pkg.get(uid, f"UID:{uid}")
+                results.append({
+                    "package": pkg,
+                    "upload": tx_delta,
+                    "download": rx_delta,
+                    "connections": active_conn.get(uid, [])
+                })
+        
+        return results

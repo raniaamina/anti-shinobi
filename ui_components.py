@@ -211,7 +211,7 @@ class MainWindow(QMainWindow):
         # Initialize Pages
         self.init_dashboard() # Index 0
         self.init_scanner_page() # Index 1
-        self.init_placeholder_page("NETWORK MONITOR", "Monitor real-time network traffic from your device.") # Index 2
+        self.init_network_page() # Index 2
         self.init_placeholder_page("STORAGE SCAN", "Identify risky APK files stored on your phone.") # Index 3
         self.init_db_page() # Index 4
         self.init_heuristics_page() # Index 5
@@ -636,30 +636,95 @@ class MainWindow(QMainWindow):
         layout.addWidget(legend)
         
         self.pages.addWidget(page)
-    def init_placeholder_page(self, title_text, desc_text):
+    def init_network_page(self):
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setContentsMargins(30, 30, 30, 30)
         
-        icon_label = QLabel("🚧")
-        icon_label.setStyleSheet("font-size: 64px;")
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(icon_label)
-        
-        title = QLabel(title_text)
+        title = QLabel("NETWORK MONITOR")
         title.setStyleSheet("font-size: 24px; font-weight: bold; color: #50C878;")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
-        status = QLabel("COMING SOON")
-        status.setStyleSheet("font-size: 14px; color: #FFFFFF; font-weight: bold; background: #333; padding: 5px 15px; border-radius: 4px;")
-        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(status)
+        info = QLabel("Monitor real-time data usage and connections per application.")
+        info.setStyleSheet("color: #888888; margin-bottom: 20px;")
+        layout.addWidget(info)
         
-        desc = QLabel(desc_text)
-        desc.setStyleSheet("color: #888888; font-size: 14px; margin-top: 10px;")
-        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(desc)
+        # Control Card
+        control_frame = QFrame()
+        control_frame.setStyleSheet("""
+            QFrame {
+                background-color: #1A1A1A;
+                border-radius: 12px;
+                border: 1px solid #333333;
+                padding: 15px;
+            }
+        """)
+        control_layout = QHBoxLayout(control_frame)
+        
+        dur_label = QLabel("Duration (seconds):")
+        dur_label.setStyleSheet("color: white; border: none;")
+        control_layout.addWidget(dur_label)
+        
+        self.net_duration_spin = QSpinBox()
+        self.net_duration_spin.setRange(1, 300)
+        self.net_duration_spin.setValue(10)
+        self.net_duration_spin.setFixedWidth(80)
+        self.net_duration_spin.setStyleSheet("background: #2D2D2D; color: white; border: 1px solid #444; border-radius: 4px; padding: 5px;")
+        control_layout.addWidget(self.net_duration_spin)
+        
+        control_layout.addStretch()
+        
+        self.btn_start_network = QPushButton("START MONITORING")
+        self.btn_start_network.setFixedWidth(180)
+        self.btn_start_network.setStyleSheet("""
+            QPushButton {
+                background-color: #50C878;
+                color: black;
+                font-weight: bold;
+                border: none;
+                border-radius: 6px;
+                padding: 10px;
+            }
+            QPushButton:hover { background-color: #45b36b; }
+            QPushButton:disabled { background-color: #2D2D2D; color: #666; }
+        """)
+        control_layout.addWidget(self.btn_start_network)
+        layout.addWidget(control_frame)
+        
+        self.net_status_label = QLabel("")
+        self.net_status_label.setStyleSheet("color: #50C878; font-weight: bold; margin-top: 10px;")
+        self.net_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.net_status_label.setVisible(False)
+        layout.addWidget(self.net_status_label)
+        
+        # Results Table
+        self.net_table = QTableWidget()
+        self.net_table.setColumnCount(5)
+        self.net_table.setHorizontalHeaderLabels(["APP/PACKAGE", "UPLOAD", "DOWNLOAD", "REMOTE ADDRESS", "DOMAIN"])
+        self.net_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.net_table.verticalHeader().setVisible(False)
+        self.net_table.setShowGrid(False)
+        self.net_table.setAlternatingRowColors(True)
+        self.net_table.setStyleSheet("""
+            QTableWidget {
+                background-color: #1A1A1A;
+                alternate-background-color: #222222;
+                color: #FFFFFF;
+                border: 1px solid #333333;
+                border-radius: 8px;
+                margin-top: 20px;
+            }
+            QHeaderView::section {
+                background-color: #2D2D2D;
+                color: #50C878;
+                padding: 10px;
+                border: none;
+                font-weight: bold;
+                border-bottom: 2px solid #50C878;
+            }
+            QTableWidget::item { padding: 10px; border: none; }
+        """)
+        layout.addWidget(self.net_table)
         
         self.pages.addWidget(page)
 
@@ -708,4 +773,31 @@ class MainWindow(QMainWindow):
             }
         """)
         layout.addWidget(self.db_table)
+        self.pages.addWidget(page)
+
+    def init_placeholder_page(self, title_text, desc_text):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        icon_label = QLabel("🚧")
+        icon_label.setStyleSheet("font-size: 64px;")
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icon_label)
+        
+        title = QLabel(title_text)
+        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #50C878;")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+        
+        status = QLabel("COMING SOON")
+        status.setStyleSheet("font-size: 14px; color: #FFFFFF; font-weight: bold; background: #333; padding: 5px 15px; border-radius: 4px;")
+        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(status)
+        
+        desc = QLabel(desc_text)
+        desc.setStyleSheet("color: #888888; font-size: 14px; margin-top: 10px;")
+        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(desc)
+        
         self.pages.addWidget(page)

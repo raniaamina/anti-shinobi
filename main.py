@@ -11,8 +11,9 @@ from report_gen import ReportGenerator
 
 class ScanThread(QThread):
     progress = pyqtSignal(int)
-    progress_info = pyqtSignal(int, int) # Current, Total
+    progress_with_time = pyqtSignal(int, int) # percent, remaining
     result_found = pyqtSignal(str, int, list, bool)
+    connection_found = pyqtSignal(dict) # new connection found
     finished_scan = pyqtSignal(list)
     error = pyqtSignal(str)
 
@@ -62,6 +63,15 @@ class ScanThread(QThread):
                     self.all_results.append({"package": f["path"], "score": 50, "findings": [f["type"]], "is_third_party": True})
                     self.progress.emit(int((i + 1) / total * 100))
             
+            elif self.mode == "network":
+                # scanner.monitor_network returns a list of result dicts
+                results = self.scanner.monitor_network(
+                    duration=self.max_workers, 
+                    progress_callback=lambda p, r: self.progress_with_time.emit(p, r),
+                    on_connection_found=lambda c: self.connection_found.emit(c)
+                )
+                self.all_results = results
+            
             self.finished_scan.emit(self.all_results)
         except Exception as e:
             self.error.emit(str(e))
@@ -94,6 +104,10 @@ class AntiShinobiApp:
         
         # Scan Settings
         self.window.thread_spin.valueChanged.connect(self.on_thread_changed)
+        
+        # Network Connections
+        self.window.btn_start_network.clicked.connect(self.start_network_monitor)
+        
         # Package DB Connections
         self.window.btn_db_add.clicked.connect(self.add_db_package)
         self.window.btn_db_delete.clicked.connect(self.delete_db_package)
@@ -102,6 +116,63 @@ class AntiShinobiApp:
         
         self.refresh_devices()
         self.window.show()
+
+    def start_network_monitor(self):
+        if not self.scanner.get_devices():
+            QMessageBox.warning(self.window, "No Device", "Please connect a device first.")
+            return
+            
+        self.window.net_table.setRowCount(0)
+        self.window.btn_start_network.setEnabled(False)
+        self.window.btn_start_network.setText("MONITORING...")
+        self.window.net_status_label.setText("Preparing monitor...")
+        self.window.net_status_label.setVisible(True)
+        
+        duration = self.window.net_duration_spin.value()
+        self.thread = ScanThread(self.scanner, mode="network", max_workers=duration)
+        self.thread.progress.connect(self.window.progress.setValue)
+        self.thread.progress_with_time.connect(self.update_net_progress)
+        self.thread.connection_found.connect(self.on_net_connection_found)
+        self.thread.finished_scan.connect(self.update_network_results)
+        self.thread.start()
+
+    def update_net_progress(self, percent, remaining):
+        self.window.progress.setValue(percent)
+        self.window.net_status_label.setText(f"Monitoring: {remaining}s remaining")
+
+    def on_net_connection_found(self, data):
+        # Data contains {package, connection: {ip, port, domain}}
+        row = self.window.net_table.rowCount()
+        # Check if package already exists to group or just append
+        # For real-time, we append new connections
+        self.window.net_table.insertRow(row)
+        self.window.net_table.setItem(row, 0, QTableWidgetItem(data["package"]))
+        self.window.net_table.setItem(row, 1, QTableWidgetItem("...")) # Volumes come later
+        self.window.net_table.setItem(row, 2, QTableWidgetItem("..."))
+        self.window.net_table.setItem(row, 3, QTableWidgetItem(f"{data['connection']['ip']}:{data['connection']['port']}"))
+        self.window.net_table.setItem(row, 4, QTableWidgetItem(data["connection"]["domain"]))
+
+    def update_network_results(self, results):
+        self.window.btn_start_network.setEnabled(True)
+        self.window.btn_start_network.setText("START MONITORING")
+        self.window.net_status_label.setVisible(False)
+        self.window.progress.setValue(0)
+        
+        # Redraw table to include volumes (clearing partial entries)
+        self.window.net_table.setRowCount(0)
+        self.window.net_table.setRowCount(len(results))
+        for row, res in enumerate(results):
+            self.window.net_table.setItem(row, 0, QTableWidgetItem(res["package"]))
+            self.window.net_table.setItem(row, 1, QTableWidgetItem(f"{res['upload'] / 1024:.2f} KB"))
+            self.window.net_table.setItem(row, 2, QTableWidgetItem(f"{res['download'] / 1024:.2f} KB"))
+            
+            # Connection List
+            conns = res.get("connections", [])
+            ips = ", ".join([f"{c['ip']}:{c['port']}" for c in conns]) if conns else "None"
+            domains = ", ".join([c['domain'] for c in conns if c['domain'] != "Unknown"]) if conns else "None"
+            
+            self.window.net_table.setItem(row, 3, QTableWidgetItem(ips))
+            self.window.net_table.setItem(row, 4, QTableWidgetItem(domains or "None"))
 
     def refresh_devices(self):
         self.window.device_combo.clear()
