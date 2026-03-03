@@ -1,0 +1,14 @@
+{
+    "known_spyware": [
+        "com.phone.spy",
+        "com.mspy.android",
+        "com.flexispy.android",
+        "com.xnspy.android",
+        "com.cocospy.android",
+        "com.spyzie.android",
+        "com.track.system",
+        "com.android.system.update",
+        "com.google.android.sync.service",
+        "com.android.backup.service"
+    ]
+}
