@@ -1,19 +1,27 @@
 #!/bin/bash
 # Anti-Shinobi Build Script (Linux)
 
+set -e
+
+echo "--- Preparing Environment ---"
+if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+fi
+
+echo "Activating virtual environment..."
+source venv/bin/activate
+
 echo "--- Installing Dependencies ---"
-pip install -r requirements.txt
+if [ -f "requirements.txt" ]; then
+    pip install -r requirements.txt
+else
+    pip install pyinstaller PyQt6 qt-material fpdf odfpy pyaxmlparser adbutils
+fi
 
 echo "--- Building Linux Binary ---"
-# --onefile: single executable
-# --noconsole: don't show terminal (GUI only)
-# --add-data: include the spyware database
-# --name: set the output filename
-pyinstaller --onefile \
-            --noconsole \
-            --add-data "data:data" \
-            --name "anti-shinobi-linux" \
-            main.py
+# Use the custom spec file which includes all necessary resources (icon, db, etc)
+pyinstaller AntiShinobi.spec --noconfirm
 
 echo "--- Build Complete! ---"
-echo "Binary location: dist/anti-shinobi-linux"
+echo "Binary location: dist/AntiShinobi"
