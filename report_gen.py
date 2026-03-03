@@ -77,3 +77,68 @@ class ReportGenerator:
         doc.spreadsheet.addElement(table)
         doc.save(filename)
         return filename
+
+    @staticmethod
+    def export_network_pdf(results, filename, device_label="Unknown Device"):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(200, 10, txt="Network Monitoring Report", ln=True, align='C')
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(200, 10, txt=f"Device: {device_label}", ln=True, align='C')
+        pdf.set_font("Arial", size=10)
+        pdf.cell(200, 10, txt=f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align='C')
+        pdf.ln(10)
+
+        # Header
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(60, 10, "App/Package", border=1)
+        pdf.cell(30, 10, "Traffic", border=1)
+        pdf.cell(50, 10, "Remote Address", border=1)
+        pdf.cell(30, 10, "Status", border=1)
+        pdf.ln()
+
+        pdf.set_font("Arial", size=9)
+        for res in results:
+            if res.get('marked_suspicious'):
+                pdf.set_fill_color(255, 200, 200)
+                status = "SUSPICIOUS"
+            else:
+                pdf.set_fill_color(255, 255, 255)
+                status = "Normal"
+            
+            # Use multi_cell or clip for long text if needed, but for now simple
+            pdf.cell(60, 8, res['app'][:30], border=1, fill=True)
+            pdf.cell(30, 8, res['traffic'], border=1, fill=True)
+            pdf.cell(50, 8, res['address'][:25], border=1, fill=True)
+            pdf.cell(30, 8, status, border=1, fill=True)
+            pdf.ln()
+        
+        pdf.output(filename)
+        return filename
+
+    @staticmethod
+    def export_network_ods(results, filename, device_label="Unknown Device"):
+        doc = OpenDocumentSpreadsheet()
+        table = Table(name="NetworkResults")
+        
+        # Header Row
+        hr = TableRow()
+        for h in ["App/Package", "Traffic (Up/Down)", "Remote Address", "Domain", "Marked Suspicious"]:
+            tc = TableCell()
+            tc.addElement(P(text=h))
+            hr.addElement(tc)
+        table.addElement(hr)
+
+        for res in results:
+            tr = TableRow()
+            tr.addElement(TableCell(value=res['app']))
+            tr.addElement(TableCell(value=res['traffic']))
+            tr.addElement(TableCell(value=res['address']))
+            tr.addElement(TableCell(value=res['domain']))
+            tr.addElement(TableCell(value="YES" if res.get('marked_suspicious') else "No"))
+            table.addElement(tr)
+
+        doc.spreadsheet.addElement(table)
+        doc.save(filename)
+        return filename

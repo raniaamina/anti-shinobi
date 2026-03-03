@@ -228,7 +228,12 @@ class AntiShinobiApp:
             self.window.net_table.setItem(row_idx, 3, dom_item)
 
     def export_network_report(self):
-        file_path, _ = QFileDialog.getSaveFileName(self.window, "Save Network Report", "network_report.json", "JSON (*.json)")
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self.window, 
+            "Save Network Report", 
+            "network_report.pdf", 
+            "PDF (*.pdf);;ODS (*.ods)"
+        )
         if not file_path: return
         
         report_data = []
@@ -248,9 +253,16 @@ class AntiShinobiApp:
                 "marked_suspicious": is_suspicious
             })
             
-        with open(file_path, 'w') as f:
-            json.dump(report_data, f, indent=4)
-        QMessageBox.information(self.window, "Success", f"Report saved to {file_path}")
+        try:
+            device_label = getattr(self, 'current_device_label', "Unknown Device")
+            if file_path.endswith(".pdf"):
+                ReportGenerator.export_network_pdf(report_data, file_path, device_label)
+            elif file_path.endswith(".ods"):
+                ReportGenerator.export_network_ods(report_data, file_path, device_label)
+            
+            QMessageBox.information(self.window, "Success", f"Report saved to {file_path}")
+        except Exception as e:
+            QMessageBox.critical(self.window, "Export Error", f"Failed to export report: {str(e)}")
 
     def refresh_devices(self):
         self.window.device_combo.clear()
