@@ -1,5 +1,6 @@
-```python
 import sys
+import os
+import json
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PyQt6.QtWidgets import (
@@ -199,23 +200,57 @@ class AntiShinobiApp:
                 pkg_item = QTableWidgetItem(label)
                 pkg_item.setToolTip(label)
                 self.window.net_table.setItem(row_idx, 0, pkg_item)
+                
+                # Add checkbox for new rows
+                cb_container = QWidget()
+                cb_layout = QHBoxLayout(cb_container)
+                cb_layout.addWidget(QCheckBox())
+                cb_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                cb_layout.setContentsMargins(0,0,0,0)
+                self.window.net_table.setCellWidget(row_idx, 4, cb_container)
             
-            # Update volumes
-            self.window.net_table.setItem(row_idx, 1, QTableWidgetItem(f"{res['upload'] / 1024:.2f} KB"))
-            self.window.net_table.setItem(row_idx, 2, QTableWidgetItem(f"{res['download'] / 1024:.2f} KB"))
+            # Update volumes (merged into column 1)
+            up_kb = res['upload'] / 1024
+            down_kb = res['download'] / 1024
+            self.window.net_table.setItem(row_idx, 1, QTableWidgetItem(f"{up_kb:.2f} / {down_kb:.2f} KB"))
             
-            # Update/Finalize Connections & Domains
+            # Update/Finalize Connections & Domains (column 2 and 3)
             conns = res.get("connections", [])
             ips = ", ".join([f"{c['ip']}:{c['port']}" for c in conns]) if conns else "None"
             domains = ", ".join([c['domain'] for c in conns if c['domain'] != "Unknown"]) if conns else "None"
             
             ips_item = QTableWidgetItem(ips)
             ips_item.setToolTip(ips)
-            self.window.net_table.setItem(row_idx, 3, ips_item)
+            self.window.net_table.setItem(row_idx, 2, ips_item)
             
             dom_item = QTableWidgetItem(domains or "None")
             dom_item.setToolTip(domains or "None")
-            self.window.net_table.setItem(row_idx, 4, dom_item)
+            self.window.net_table.setItem(row_idx, 3, dom_item)
+
+    def export_network_report(self):
+        file_path, _ = QFileDialog.getSaveFileName(self.window, "Save Network Report", "network_report.json", "JSON (*.json)")
+        if not file_path: return
+        
+        report_data = []
+        for row in range(self.window.net_table.rowCount()):
+            # Extract marked status
+            cb_container = self.window.net_table.cellWidget(row, 4)
+            is_suspicious = False
+            if cb_container:
+                cb = cb_container.findChild(QCheckBox)
+                if cb: is_suspicious = cb.isChecked()
+            
+            report_data.append({
+                "app": self.window.net_table.item(row, 0).text(),
+                "traffic": self.window.net_table.item(row, 1).text(),
+                "address": self.window.net_table.item(row, 2).text(),
+                "domain": self.window.net_table.item(row, 3).text(),
+                "marked_suspicious": is_suspicious
+            })
+            
+        with open(file_path, 'w') as f:
+            json.dump(report_data, f, indent=4)
+        QMessageBox.information(self.window, "Success", f"Report saved to {file_path}")
 
     def refresh_devices(self):
         self.window.device_combo.clear()
