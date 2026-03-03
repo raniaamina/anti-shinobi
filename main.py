@@ -158,21 +158,33 @@ class AntiShinobiApp:
         self.window.net_status_label.setVisible(False)
         self.window.progress.setValue(0)
         
-        # Redraw table to include volumes (clearing partial entries)
-        self.window.net_table.setRowCount(0)
-        self.window.net_table.setRowCount(len(results))
-        for row, res in enumerate(results):
-            self.window.net_table.setItem(row, 0, QTableWidgetItem(res["package"]))
-            self.window.net_table.setItem(row, 1, QTableWidgetItem(f"{res['upload'] / 1024:.2f} KB"))
-            self.window.net_table.setItem(row, 2, QTableWidgetItem(f"{res['download'] / 1024:.2f} KB"))
+        # Don't clear! Update existing rows or add missing ones with final volumes
+        # This ensures real-time findings stay visible
+        for res in results:
+            label = res["package"]
+            # Find row index for this label
+            row_idx = -1
+            for r in range(self.window.net_table.rowCount()):
+                if self.window.net_table.item(r, 0).text() == label:
+                    row_idx = r
+                    break
             
-            # Connection List
+            if row_idx == -1:
+                row_idx = self.window.net_table.rowCount()
+                self.window.net_table.insertRow(row_idx)
+                self.window.net_table.setItem(row_idx, 0, QTableWidgetItem(label))
+            
+            # Update volumes
+            self.window.net_table.setItem(row_idx, 1, QTableWidgetItem(f"{res['upload'] / 1024:.2f} KB"))
+            self.window.net_table.setItem(row_idx, 2, QTableWidgetItem(f"{res['download'] / 1024:.2f} KB"))
+            
+            # Update/Finalize Connections & Domains
             conns = res.get("connections", [])
             ips = ", ".join([f"{c['ip']}:{c['port']}" for c in conns]) if conns else "None"
             domains = ", ".join([c['domain'] for c in conns if c['domain'] != "Unknown"]) if conns else "None"
             
-            self.window.net_table.setItem(row, 3, QTableWidgetItem(ips))
-            self.window.net_table.setItem(row, 4, QTableWidgetItem(domains or "None"))
+            self.window.net_table.setItem(row_idx, 3, QTableWidgetItem(ips))
+            self.window.net_table.setItem(row_idx, 4, QTableWidgetItem(domains or "None"))
 
     def refresh_devices(self):
         self.window.device_combo.clear()

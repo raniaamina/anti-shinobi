@@ -116,16 +116,22 @@ class SpywareScanner:
             findings.append({"path": apk_path, "type": "APK on storage"})
         return findings
 
-    def _get_uid_for_package(self, package_name):
-        if package_name in self._uid_cache:
-            return self._uid_cache[package_name]
+    def _get_label_for_uid(self, uid):
+        """Maps UID to package name or human readable label."""
         try:
-            res = self.device.shell(f"dumpsys package {package_name} | grep userId=").strip()
-            uid = re.search(r"userId=(\d+)", res).group(1)
-            self._uid_cache[package_name] = uid
-            return uid
-        except:
-            return None
+            # First get package name for UID using pm
+            pkg = self.device.shell(f"pm list packages --uid {uid}").strip()
+            if "package:" in pkg:
+                pkg_name = pkg.split("package:")[1].split()[0]
+                # Try to get label for package
+                try:
+                    res = self.device.shell(f"dumpsys package {pkg_name} | grep -i label")
+                    match = re.search(r"label=(.+)", res)
+                    if match: return f"{match.group(1).strip()} ({pkg_name})"
+                except: pass
+                return pkg_name
+        except: pass
+        return f"UID:{uid}"
 
     def _get_network_stats(self):
         """Returns map of UID -> {rx: bytes, tx: bytes}"""
@@ -180,18 +186,12 @@ class SpywareScanner:
         """Monitors network traffic for a specific duration."""
         if not self.device: return []
         
-        # 1. Map all UIDs to Packages first to be faster later
-        uid_to_pkg = {}
-        pkg_list = self.get_installed_packages()
-        for pkg in pkg_list:
-            uid = self._get_uid_for_package(pkg)
-            if uid: uid_to_pkg[int(uid)] = pkg
-
-        # 2. Get initial snapshots
+        # 1. Get initial snapshots
         start_stats = self._get_network_stats()
         active_conn = {} # UID -> list of (IP, Port, Domain)
+        uid_labels = {} # Cache for labels
         
-        # 3. Wait/Monitor
+        # 2. Wait/Monitor
         for i in range(duration):
             remaining = duration - i
             if progress_callback: 
@@ -201,7 +201,11 @@ class SpywareScanner:
             new_conns = self._get_active_connections()
             for uid, conns in new_conns.items():
                 if uid not in active_conn: active_conn[uid] = []
-                pkg = uid_to_pkg.get(uid, f"UID:{uid}")
+                
+                if uid not in uid_labels:
+                    uid_labels[uid] = self._get_label_for_uid(uid)
+                
+                label = uid_labels[uid]
                 
                 for ip, port in conns:
                     # Check if already seen
@@ -220,25 +224,32 @@ class SpywareScanner:
                     # Live callback for immediate UI update
                     if on_connection_found:
                         on_connection_found({
-                            "package": pkg,
+                            "package": label,
                             "connection": conn_info
                         })
             
             time.sleep(1)
 
-        # 4. Get final snapshot for volumes
+        # 3. Get final snapshot for volumes
         end_stats = self._get_network_stats()
         
-        # 5. Compile final results (volumes + all unique connections)
+        # 4. Compile final results
+        # Union of all UIDs seen in stats OR connections
+        all_uids = set(end_stats.keys()) | set(active_conn.keys())
+        
         results = []
-        for uid, stats in end_stats.items():
-            rx_delta = stats["rx"] - start_stats.get(uid, {"rx": 0})["rx"]
-            tx_delta = stats["tx"] - start_stats.get(uid, {"tx": 0})["tx"]
+        for uid in all_uids:
+            stats_end = end_stats.get(uid, {"rx": 0, "tx": 0})
+            stats_start = start_stats.get(uid, {"rx": 0, "tx": 0})
             
+            rx_delta = stats_end["rx"] - stats_start["rx"]
+            tx_delta = stats_end["tx"] - stats_start["tx"]
+            
+            # Show if there was traffic OR active connections
             if rx_delta > 0 or tx_delta > 0 or uid in active_conn:
-                pkg = uid_to_pkg.get(uid, f"UID:{uid}")
+                label = uid_labels.get(uid) or self._get_label_for_uid(uid)
                 results.append({
-                    "package": pkg,
+                    "package": label,
                     "upload": tx_delta,
                     "download": rx_delta,
                     "connections": active_conn.get(uid, [])
