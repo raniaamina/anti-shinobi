@@ -2,7 +2,8 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QListWidget, QProgressBar, 
                              QFrame, QScrollArea, QStackedWidget, QComboBox,
                              QFileDialog, QMessageBox, QMenu, QCheckBox,
-                             QTableWidget, QTableWidgetItem, QHeaderView)
+                             QTableWidget, QTableWidgetItem, QHeaderView,
+                             QSpinBox)
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon
 from qt_material import apply_stylesheet
@@ -306,6 +307,55 @@ class MainWindow(QMainWindow):
         stats_layout.addWidget(self.device_status)
         
         layout.addWidget(self.stats_frame)
+        
+        # Scan Settings Card (NEW)
+        self.settings_frame = QFrame()
+        self.settings_frame.setObjectName("SettingsFrame")
+        self.settings_frame.setStyleSheet("""
+            #SettingsFrame {
+                background-color: #1A1A1A; 
+                border-radius: 12px; 
+                border: 1px solid #333333; 
+                margin-top: 20px; 
+                padding: 20px;
+            }
+            QLabel { border: none; background: transparent; }
+        """)
+        settings_layout = QVBoxLayout(self.settings_frame)
+        
+        settings_title = QLabel("SCAN SETTINGS")
+        settings_title.setStyleSheet("color: #666666; font-size: 11px; font-weight: bold; letter-spacing: 1px;")
+        settings_layout.addWidget(settings_title)
+        
+        thread_layout = QHBoxLayout()
+        thread_label = QLabel("Parallel Processing Threads")
+        thread_label.setStyleSheet("color: #FFFFFF; font-size: 14px;")
+        thread_layout.addWidget(thread_label)
+        
+        self.thread_spin = QSpinBox()
+        self.thread_spin.setRange(1, 20)
+        self.thread_spin.setValue(8)
+        self.thread_spin.setFixedWidth(80)
+        self.thread_spin.setFixedHeight(35)
+        self.thread_spin.setStyleSheet("""
+            QSpinBox {
+                background-color: #2D2D2D;
+                border: 1px solid #444444;
+                border-radius: 4px;
+                color: white;
+                padding: 5px;
+            }
+        """)
+        thread_layout.addWidget(self.thread_spin)
+        settings_layout.addLayout(thread_layout)
+        
+        self.thread_warning = QLabel("⚠️ High thread count! Ensure high-quality USB cable and device stability.")
+        self.thread_warning.setWordWrap(True)
+        self.thread_warning.setStyleSheet("color: #FF4B4B; font-size: 11px; font-weight: bold; margin-top: 5px;")
+        self.thread_warning.setVisible(False)
+        settings_layout.addWidget(self.thread_warning)
+        
+        layout.addWidget(self.settings_frame)
         layout.addStretch()
         self.pages.addWidget(page)
 

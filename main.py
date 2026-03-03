@@ -2,6 +2,7 @@ import sys
 import os
 import json
 import signal
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox, QTableWidgetItem
 from PyQt6.QtCore import QThread, pyqtSignal
 from ui_components import MainWindow, RiskCard
@@ -15,10 +16,11 @@ class ScanThread(QThread):
     finished_scan = pyqtSignal(list)
     error = pyqtSignal(str)
 
-    def __init__(self, scanner, mode="apps"):
+    def __init__(self, scanner, mode="apps", max_workers=8):
         super().__init__()
         self.scanner = scanner
         self.mode = mode
+        self.max_workers = max_workers
         self.all_results = []
         self.is_running = True
 
@@ -30,14 +32,26 @@ class ScanThread(QThread):
             if self.mode == "apps":
                 packages = self.scanner.get_installed_packages()
                 total = len(packages)
-                for i, pkg in enumerate(packages):
-                    if not self.is_running: break
-                    res = self.scanner.analyze_package(pkg)
-                    if res["score"] > 10:
-                        self.result_found.emit(res["package"], res["score"], res["findings"], res["is_third_party"])
-                        self.all_results.append(res)
-                    self.progress.emit(int((i + 1) / total * 100))
-                    self.progress_info.emit(i + 1, total)
+                
+                # Use a ThreadPoolExecutor for concurrent analysis
+                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                    futures = {executor.submit(self.scanner.analyze_package, pkg): pkg for pkg in packages}
+                    
+                    for i, future in enumerate(as_completed(futures)):
+                        if not self.is_running:
+                            executor.shutdown(wait=False, cancel_futures=True)
+                            break
+                        
+                        try:
+                            res = future.result()
+                            if res["score"] > 10:
+                                self.result_found.emit(res["package"], res["score"], res["findings"], res["is_third_party"])
+                                self.all_results.append(res)
+                        except Exception as e:
+                            print(f"Error analyzing package: {e}")
+                            
+                        self.progress.emit(int((i + 1) / total * 100))
+                        self.progress_info.emit(i + 1, total)
             
             elif self.mode == "storage":
                 findings = self.scanner.scan_storage_apks()
@@ -78,6 +92,8 @@ class AntiShinobiApp:
         self.window.btn_float_pdf.clicked.connect(lambda: self.export_report("pdf"))
         self.window.btn_float_ods.clicked.connect(lambda: self.export_report("ods"))
         
+        # Scan Settings
+        self.window.thread_spin.valueChanged.connect(self.on_thread_changed)
         # Package DB Connections
         self.window.btn_db_add.clicked.connect(self.add_db_package)
         self.window.btn_db_delete.clicked.connect(self.delete_db_package)
@@ -156,7 +172,8 @@ class AntiShinobiApp:
         mode = "apps"
         if "STORAGE" in self.window.scan_action_btn.text(): mode = "storage"
         
-        self.thread = ScanThread(self.scanner, mode=mode)
+        threads = self.window.thread_spin.value()
+        self.thread = ScanThread(self.scanner, mode=mode, max_workers=threads)
         self.thread.progress.connect(self.window.progress.setValue)
         self.thread.progress_info.connect(self.update_progress_info)
         self.thread.result_found.connect(self.add_and_update_stats)
@@ -251,6 +268,9 @@ class AntiShinobiApp:
                 QMessageBox.information(self.window, "Success", f"Report exported successfully to {path}")
             except Exception as e:
                 QMessageBox.critical(self.window, "Export Error", f"Failed to export report: {str(e)}")
+
+    def on_thread_changed(self, value):
+        self.window.thread_warning.setVisible(value > 10)
 
     def load_db_json(self):
         db_path = "data/spyware_db.json"
