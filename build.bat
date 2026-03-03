@@ -1,20 +1,26 @@
 @echo off
 REM Anti-Shinobi Build Script (Windows)
 
+echo --- Preparing Environment ---
+if not exist "venv\" (
+    echo Creating virtual environment...
+    python -m venv venv
+)
+
+echo Activating virtual environment...
+call venv\Scripts\activate.bat
+
 echo --- Installing Dependencies ---
-pip install -r requirements.txt
+if exist "requirements.txt" (
+    pip install -r requirements.txt
+) else (
+    pip install pyinstaller PyQt6 qt-material fpdf odfpy pyaxmlparser adbutils
+)
 
 echo --- Building Windows Executable ---
-REM --onefile: single executable
-REM --noconsole: don't show terminal (GUI only)
-REM --add-data: include the spyware database (Windows uses ; for separator)
-REM --name: set the output filename
-pyinstaller --onefile ^
-            --noconsole ^
-            --add-data "data;data" ^
-            --name "anti-shinobi-win" ^
-            main.py
+REM Use the custom spec file which includes all necessary resources (icon, db, etc)
+pyinstaller AntiShinobi.spec --noconfirm
 
 echo --- Build Complete! ---
-echo Binary location: dist/anti-shinobi-win.exe
+echo Binary location: dist\AntiShinobi.exe
 pause
