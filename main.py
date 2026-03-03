@@ -5,7 +5,7 @@ import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PyQt6.QtWidgets import (
     QApplication, QFileDialog, QMessageBox, QTableWidgetItem,
-    QWidget, QHBoxLayout, QCheckBox
+    QWidget, QHBoxLayout, QCheckBox, QStyleFactory
 )
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from ui_components import MainWindow, RiskCard
@@ -80,13 +80,20 @@ class ScanThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
+import logging
+
+class StyleWarningFilter(logging.Filter):
+    def filter(self, record):
+        return "The style 'Fusion' does not exist" not in record.getMessage()
+
+# Suppress the Fusion style warning globally
+logging.getLogger().addFilter(StyleWarningFilter())
+
 class AntiShinobiApp:
     def __init__(self):
         self.app = QApplication(sys.argv)
-        try:
+        if "Fusion" in QStyleFactory.keys():
             self.app.setStyle("Fusion")
-        except:
-            pass
             
         self.window = MainWindow()
         self.scanner = SpywareScanner()
