@@ -2,6 +2,7 @@ import sys
 import os
 import json
 import signal
+import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PyQt6.QtWidgets import (
     QApplication, QFileDialog, QMessageBox, QTableWidgetItem,
@@ -441,8 +442,26 @@ class AntiShinobiApp:
     def on_thread_changed(self, value):
         self.window.thread_warning.setVisible(value > 10)
 
+    def get_db_path(self):
+        config_dir = os.path.expanduser("~/.config/AntiShinobi")
+        os.makedirs(config_dir, exist_ok=True)
+        return os.path.join(config_dir, "spyware_db.json")
+
     def load_db_json(self):
-        db_path = "data/spyware_db.json"
+        db_path = self.get_db_path()
+        
+        # If it doesn't exist in config, copy from the bundled app if possible
+        if not os.path.exists(db_path):
+            bundled_db = "data/spyware_db.json"
+            if hasattr(sys, "_MEIPASS"):
+                bundled_db = os.path.join(sys._MEIPASS, "data", "spyware_db.json")
+            
+            if os.path.exists(bundled_db):
+                try:
+                    shutil.copy2(bundled_db, db_path)
+                except Exception as e:
+                    print(f"Failed to copy bundled db: {e}")
+                    
         if not os.path.exists(db_path): return
         
         try:
@@ -472,7 +491,7 @@ class AntiShinobiApp:
             self.window.db_table.removeRow(current_row)
 
     def save_db_json(self):
-        db_path = "data/spyware_db.json"
+        db_path = self.get_db_path()
         packages = []
         for i in range(self.window.db_table.rowCount()):
             item = self.window.db_table.item(i, 0)
