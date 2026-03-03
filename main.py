@@ -14,6 +14,7 @@ from report_gen import ReportGenerator
 
 class ScanThread(QThread):
     progress = pyqtSignal(int)
+    progress_info = pyqtSignal(int, int) # Current, Total
     progress_with_time = pyqtSignal(int, int) # percent, remaining
     result_found = pyqtSignal(str, int, list, bool)
     connection_found = pyqtSignal(dict) # new connection found
