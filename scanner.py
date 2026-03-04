@@ -130,8 +130,13 @@ class SpywareScanner:
                             self.device.sync.pull(actual_apk_path, tmp_apk)
                             if os.path.isfile(tmp_apk):
                                 import subprocess
-                                # Use official apksigner for 100% accuracy
-                                cmd = ["apksigner", "verify", "--print-certs", tmp_apk]
+                                import shlex
+                                
+                                # Use configured apksigner path
+                                apksigner_path = self.db.get("settings", {}).get("apksigner_path", "apksigner")
+                                cmd = shlex.split(apksigner_path)
+                                cmd.extend(["verify", "--print-certs", tmp_apk])
+                                
                                 proc = subprocess.run(cmd, capture_output=True, text=True)
                                 output = proc.stdout
                                 

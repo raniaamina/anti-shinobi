@@ -479,6 +479,45 @@ class MainWindow(QMainWindow):
         self.thread_warning.setVisible(False)
         settings_layout.addWidget(self.thread_warning)
         
+        # Apksigner Path Section
+        settings_layout.addSpacing(15)
+        apksigner_label = QLabel("APKSIGNER PATH")
+        apksigner_label.setStyleSheet("color: #666666; font-size: 11px; font-weight: bold; letter-spacing: 1px;")
+        settings_layout.addWidget(apksigner_label)
+
+        apksigner_layout = QHBoxLayout()
+        self.apksigner_input = QLineEdit()
+        self.apksigner_input.setPlaceholderText("e.g. apksigner, /path/to/apksigner, java -jar apksigner.jar")
+        self.apksigner_input.setFixedHeight(35)
+        self.apksigner_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #2D2D2D;
+                border: 1px solid #444444;
+                border-radius: 4px;
+                color: #FFFFFF;
+                padding: 5px 10px;
+                font-size: 12px;
+            }
+        """)
+        apksigner_layout.addWidget(self.apksigner_input)
+
+        self.btn_save_apksigner = QPushButton("SAVE")
+        self.btn_save_apksigner.setFixedWidth(80)
+        self.btn_save_apksigner.setFixedHeight(35)
+        self.btn_save_apksigner.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_save_apksigner.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: 1px solid #50C878;
+                color: #50C878;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #50C878; color: black; }
+        """)
+        apksigner_layout.addWidget(self.btn_save_apksigner)
+        settings_layout.addLayout(apksigner_layout)
+        
         # Cache Maintenance Section
         settings_layout.addSpacing(15)
         cache_label = QLabel("CACHE MAINTENANCE")

@@ -75,5 +75,8 @@
                 "A0332928E61E86F1E683C29DC6E55F5181127B9F5ED8A7C4E84F9B8718F006E3"
             ]
         }
-    ]
+    ],
+    "settings": {
+        "apksigner_path": "/usr/bin/apksigner"
+    }
 }

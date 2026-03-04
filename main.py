@@ -158,6 +158,7 @@ class AntiShinobiApp:
         
         # Scan Settings
         self.window.thread_spin.valueChanged.connect(self.on_thread_changed)
+        self.window.btn_save_apksigner.clicked.connect(self.save_settings)
         self.window.btn_clear_cache.clicked.connect(self.confirm_clear_cache)
         
         # Network Connections
@@ -610,6 +611,32 @@ class AntiShinobiApp:
     def on_thread_changed(self, value):
         self.window.thread_warning.setVisible(value > 10)
 
+    def save_settings(self):
+        new_path = self.window.apksigner_input.text().strip()
+        if not new_path:
+            new_path = "apksigner"
+            self.window.apksigner_input.setText(new_path)
+            
+        db_path = self.get_db_path()
+        try:
+            data = {"known_spyware": [], "trusted_signatures": [], "settings": {}}
+            if os.path.exists(db_path):
+                with open(db_path, "r") as f:
+                    data = json.load(f)
+            
+            if "settings" not in data:
+                data["settings"] = {}
+                
+            data["settings"]["apksigner_path"] = new_path
+            
+            with open(db_path, "w") as f:
+                json.dump(data, f, indent=4)
+                
+            QMessageBox.information(self.window, "Settings Saved", f"Apksigner path updated successfully.")
+            self.scanner.load_db() # Reload DB in scanner to apply new path
+        except Exception as e:
+            QMessageBox.critical(self.window, "Error", f"Failed to save settings: {str(e)}")
+
     def get_db_path(self):
         config_dir = os.path.expanduser("~/.config/AntiShinobi")
         os.makedirs(config_dir, exist_ok=True)
@@ -637,6 +664,10 @@ class AntiShinobiApp:
                 data = json.load(f)
                 spyware = data.get("known_spyware", [])
                 trusted = data.get("trusted_signatures", [])
+                settings = data.get("settings", {})
+                
+                # Load settings into UI
+                self.window.apksigner_input.setText(settings.get("apksigner_path", "apksigner"))
                 
             self.window.table_red_flags.setRowCount(0)
             for pkg in spyware:
