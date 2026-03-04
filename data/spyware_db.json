@@ -104,6 +104,11 @@
             "common_name": "Android",
             "organization": "",
             "fingerprint": "197F667AE126AF53A8A891B5D5C81D7C0E48223B3E828E51870A4AEADD9E8D9D"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "A0332928E61E86F1E683C29DC6E55F5181127B9F5ED8A7C4E84F9B8718F006E3"
         }
     ]
 }
