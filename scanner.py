@@ -137,8 +137,15 @@ class SpywareScanner:
                                 cmd = shlex.split(apksigner_path)
                                 cmd.extend(["verify", "--print-certs", tmp_apk])
                                 
-                                proc = subprocess.run(cmd, capture_output=True, text=True)
-                                output = proc.stdout
+                                try:
+                                    proc = subprocess.run(cmd, capture_output=True, text=True)
+                                    output = proc.stdout
+                                except FileNotFoundError:
+                                    print(f"Fallback extraction failed for {package_name}: Apksigner not found. Check path in settings.")
+                                    return None, None, None
+                                except Exception as e:
+                                    print(f"Fallback extraction failed for {package_name}: {str(e)}")
+                                    return None, None, None
                                 
                                 if "SHA-256 digest:" in output:
                                     sig_match = re.search(r"SHA-256 digest: ([0-9A-Fa-f]{64})", output)
