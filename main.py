@@ -138,7 +138,7 @@ class AntiShinobiApp:
             self.app.setStyle("Fusion")
             
         self.window = MainWindow()
-        self.scanner = SpywareScanner()
+        self.scanner = SpywareScanner(self.get_db_path())
         self.last_results = []
         self.device_map = {} # label -> serial
         self.current_device_serial = None
