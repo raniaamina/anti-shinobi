@@ -3,7 +3,8 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QFrame, QScrollArea, QStackedWidget, QComboBox,
                              QFileDialog, QMessageBox, QMenu, QCheckBox,
                              QTableWidget, QTableWidgetItem, QHeaderView,
-                             QSpinBox, QAbstractItemView)
+                             QSpinBox, QAbstractItemView, QTabWidget, QSizePolicy,
+                             QDialog, QLineEdit, QListWidgetItem)
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon
 from qt_material import apply_stylesheet
@@ -19,6 +20,80 @@ def resource_path(relative_path):
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+class FingerprintManagerDialog(QDialog):
+    def __init__(self, name, fingerprints, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"Manage Fingerprints - {name}")
+        self.setMinimumSize(500, 400)
+        self.fingerprints = list(fingerprints) if isinstance(fingerprints, list) else [fingerprints]
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        
+        info = QLabel(f"Below are the trusted fingerprints for <b>{self.windowTitle().split(' - ')[1]}</b>")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        self.list_widget = QListWidget()
+        for sig in self.fingerprints:
+            self.list_widget.addItem(sig)
+        layout.addWidget(self.list_widget)
+
+        # Add New Fingerprint
+        add_layout = QHBoxLayout()
+        self.new_sig_input = QLineEdit()
+        self.new_sig_input.setPlaceholderText("Enter new SHA-256 fingerprint...")
+        btn_add = QPushButton("ADD")
+        btn_add.setFixedWidth(80)
+        btn_add.clicked.connect(self.add_fingerprint)
+        add_layout.addWidget(self.new_sig_input)
+        add_layout.addWidget(btn_add)
+        layout.addLayout(add_layout)
+
+        # Bottom Buttons
+        btn_layout = QHBoxLayout()
+        btn_delete = QPushButton("DELETE SELECTED")
+        btn_delete.setStyleSheet("background-color: #A52A2A; color: white;")
+        btn_delete.clicked.connect(self.delete_selected)
+        
+        btn_save = QPushButton("SAVE CHANGES")
+        btn_save.setStyleSheet("background-color: #50C878; color: black; font-weight: bold;")
+        btn_save.clicked.connect(self.accept)
+        
+        btn_cancel = QPushButton("CANCEL")
+        btn_cancel.clicked.connect(self.reject)
+        
+        btn_layout.addWidget(btn_delete)
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_save)
+        layout.addLayout(btn_layout)
+
+    def add_fingerprint(self):
+        sig = self.new_sig_input.text().strip().upper()
+        if not sig: return
+        if len(sig) < 64:
+            QMessageBox.warning(self, "Invalid Format", "Fingerprint looks too short for SHA-256.")
+            return
+        
+        # Check for duplicates
+        if any(self.list_widget.item(i).text() == sig for i in range(self.list_widget.count())):
+            QMessageBox.information(self, "Duplicate", "This fingerprint is already in the list.")
+            return
+
+        self.list_widget.addItem(sig)
+        self.new_sig_input.clear()
+
+    def delete_selected(self):
+        selected = self.list_widget.selectedItems()
+        if not selected: return
+        for item in selected:
+            self.list_widget.takeItem(self.list_widget.row(item))
+
+    def get_fingerprints(self):
+        return [self.list_widget.item(i).text() for i in range(self.list_widget.count())]
 
 class NavButton(QPushButton):
     def __init__(self, text, parent=None):
@@ -48,12 +123,17 @@ class NavButton(QPushButton):
         """)
 
 class RiskCard(QFrame):
-    def __init__(self, title, score, findings, is_third_party=False, parent=None):
+    trustClicked = pyqtSignal(str, str, str) # sig, cn, org
+
+    def __init__(self, title, score, findings, is_third_party=False, sig=None, cn=None, org=None, parent=None):
         super().__init__(parent)
         self.title = title
         self.score = score
         self.findings = findings
         self.is_third_party = is_third_party
+        self.sig = sig
+        self.cn = cn
+        self.org = org
         self.is_expanded = False
         
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -82,17 +162,29 @@ class RiskCard(QFrame):
         header.setSpacing(15)
         
         self.title_label = QLabel(title)
+        self.title_label.setWordWrap(True)
+        self.title_label.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Preferred)
+        self.title_label.setMinimumWidth(100) # Ensure it can shrink
         self.title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #FFFFFF; border: none;")
         
-        self.score_badge = QLabel(f"{score}% RISK")
-        self.score_badge.setFixedWidth(80)
+        # Determine label text and width
+        is_verified = any("TRUSTED" in str(f) or "Verified" in str(f) for f in findings)
+        if score == 0 and is_verified:
+            label_text = "SAFE (Verified by Signature)"
+            badge_width = 180
+        else:
+            label_text = f"{score}% RISK"
+            badge_width = 80
+
+        self.score_badge = QLabel(label_text)
+        self.score_badge.setFixedWidth(badge_width)
         self.score_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.score_badge.setStyleSheet(f"""
             QLabel {{
                 background-color: {border_color}; 
                 color: {"#FFFFFF" if score >= 50 else "#000000"}; 
                 font-weight: bold; 
-                font-size: 11px; 
+                font-size: 10px; 
                 padding: 4px; 
                 border-radius: 4px;
             }}
@@ -115,8 +207,28 @@ class RiskCard(QFrame):
         """)
         self.toggle_btn.clicked.connect(self.toggle_expand)
         
-        header.addWidget(self.title_label)
-        header.addStretch()
+        self.trust_btn = QPushButton("TRUST SIGNER")
+        self.trust_btn.setFixedSize(100, 24)
+        self.trust_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.trust_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: 1px solid #50C878;
+                color: #50C878;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 9px;
+            }
+            QPushButton:hover {
+                background-color: #50C878;
+                color: black;
+            }
+        """)
+        self.trust_btn.setVisible(sig is not None and not is_verified and score > 0)
+        self.trust_btn.clicked.connect(lambda: self.trustClicked.emit(self.sig, self.cn or "", self.org or ""))
+
+        header.addWidget(self.title_label, 1) # Give it stretch factor 1
+        header.addWidget(self.trust_btn)
         header.addWidget(self.score_badge)
         header.addWidget(self.toggle_btn)
         
@@ -224,7 +336,7 @@ class MainWindow(QMainWindow):
         self.init_dashboard() # Index 0
         self.init_scanner_page() # Index 1
         self.init_network_page() # Index 2
-        self.init_placeholder_page("STORAGE SCAN", "Identify risky APK files stored on your phone.") # Index 3
+        self.init_storage_page() # Index 3
         self.init_db_page() # Index 4
         self.init_heuristics_page() # Index 5
         
@@ -367,6 +479,29 @@ class MainWindow(QMainWindow):
         self.thread_warning.setVisible(False)
         settings_layout.addWidget(self.thread_warning)
         
+        # Cache Maintenance Section
+        settings_layout.addSpacing(15)
+        cache_label = QLabel("CACHE MAINTENANCE")
+        cache_label.setStyleSheet("color: #666666; font-size: 11px; font-weight: bold; letter-spacing: 1px;")
+        settings_layout.addWidget(cache_label)
+        
+        self.btn_clear_cache = QPushButton("CLEAR LOCAL APK CACHE (.tmp)")
+        self.btn_clear_cache.setFixedHeight(40)
+        self.btn_clear_cache.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_cache.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: 1px solid #FF4B4B;
+                color: #FF4B4B;
+                border-radius: 6px;
+                font-weight: bold;
+                padding: 5px;
+                font-size: 11px;
+            }
+            QPushButton:hover { background-color: #FF4B4B; color: white; }
+        """)
+        settings_layout.addWidget(self.btn_clear_cache)
+        
         layout.addWidget(self.settings_frame)
         layout.addStretch()
         self.pages.addWidget(page)
@@ -463,6 +598,7 @@ class MainWindow(QMainWindow):
         
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll.setStyleSheet("background-color: transparent; border: none;")
         self.results_container = QWidget()
         self.results_layout = QVBoxLayout(self.results_container)
@@ -515,18 +651,30 @@ class MainWindow(QMainWindow):
         index = self.nav_group.index(sender)
         self.pages.setCurrentIndex(index)
         
-        # Update scan button text and visibility based on tab
+        # In this refactored version, buttons are inside the pages mostly, 
+        # so we don't need to update scan_action_btn visibility here as much,
+        # but for compatibility with current main.py logic:
         labels = ["", "ANALYZE APPS", "START MONITOR", "START STORAGE SCAN", "", ""]
         txt = labels[index]
         self.scan_action_btn.setText(txt)
-        self.scan_action_btn.setVisible(txt != "")
-    def add_result(self, package_name, score, findings, is_third_party=False):
-        card = RiskCard(package_name, score, findings, is_third_party)
-        self.results_layout.insertWidget(self.results_layout.count() - 1, card)
+        # Only show the floating action button for App Scanner and Network Monitor if they aren't on page
+        self.scan_action_btn.setVisible(index in [1, 2])
+    def add_result(self, package_name, score, findings, is_third_party=False, sig=None, cn=None, org=None, target_layout=None):
+        layout = target_layout if target_layout else self.results_layout
+        card = RiskCard(package_name, score, findings, is_third_party, sig, cn, org)
+        layout.insertWidget(layout.count() - 1, card)
+        return card
 
     def clear_results(self):
         while self.results_layout.count() > 1:
             item = self.results_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def clear_storage_results(self):
+        if not hasattr(self, 'storage_results_layout'): return
+        while self.storage_results_layout.count() > 1:
+            item = self.storage_results_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
@@ -767,35 +915,67 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
         
-        header = QHBoxLayout()
         title = QLabel("PACKAGE DATABASE")
         title.setStyleSheet("font-size: 24px; font-weight: bold; color: #50C878;")
-        header.addWidget(title)
-        header.addStretch()
+        layout.addWidget(title)
         
-        self.btn_db_add = QPushButton("ADD NEW")
-        self.btn_db_delete = QPushButton("DELETE SELECTED")
-        self.btn_db_save = QPushButton("SAVE CHANGES")
-        
-        for b, color in [(self.btn_db_add, "#50C878"), (self.btn_db_delete, "#FF4B4B"), (self.btn_db_save, "#2D2D2D")]:
-            b.setFixedSize(140, 35)
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            txt_color = "black" if color != "#2D2D2D" else "white"
-            b.setStyleSheet(f"background-color: {color}; color: {txt_color}; font-weight: bold; border-radius: 4px; font-size: 11px;")
-            header.addWidget(b)
-            
-        layout.addLayout(header)
-        
-        self.db_table = QTableWidget()
-        self.db_table.setColumnCount(1)
-        self.db_table.setHorizontalHeaderLabels(["Package Name (Identifier)"])
-        self.db_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.db_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #1A1A1A;
-                color: #FFFFFF;
+        self.db_tabs = QTabWidget()
+        self.db_tabs.setStyleSheet("""
+            QTabWidget::pane {
                 border: 1px solid #333333;
+                background-color: #1A1A1A;
                 border-radius: 8px;
+            }
+            QTabBar::tab {
+                background-color: #2D2D2D;
+                color: #888888;
+                padding: 10px 20px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: #1A1A1A;
+                color: #50C878;
+                font-weight: bold;
+                border: 1px solid #333333;
+                border-bottom: none;
+            }
+        """)
+
+        # Tab 1: Red Flags (Blacklist)
+        self.tab_red, self.btn_db_add_red, self.btn_db_edit_red, self.btn_db_del_red, self.btn_db_save_red, self.table_red_flags = \
+            self._create_db_tab_content(["Package Name (Identifier)"])
+        self.db_tabs.addTab(self.tab_red, "🚩 RED FLAGS (BLACK LIST)")
+
+        # Tab 2: Trusted Signatures (Whitelist)
+        self.tab_tr, self.btn_db_add_tr, self.btn_db_edit_tr, self.btn_db_del_tr, self.btn_db_save_tr, self.table_trusted = \
+            self._create_db_tab_content(["Common Name (CN)", "Organization (O)", "SHA-256 Fingerprint"])
+        self.db_tabs.addTab(self.tab_tr, "🛡️ TRUSTED SIGNATURES (WHITE LIST)")
+
+        layout.addWidget(self.db_tabs)
+        self.pages.addWidget(page)
+
+    def _create_db_tab_content(self, headers):
+        container = QWidget()
+        main_layout = QHBoxLayout(container)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+
+        # 1. Table (Left Side)
+        table = QTableWidget()
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers) # READ ONLY BY DEFAULT
+        for i in range(len(headers)):
+            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+        
+        table.setStyleSheet("""
+            QTableWidget {
+                background-color: #1E1E1E;
+                color: #FFFFFF;
+                border: 1px solid #333;
+                gridline-color: #333;
             }
             QHeaderView::section {
                 background-color: #2D2D2D;
@@ -803,9 +983,90 @@ class MainWindow(QMainWindow):
                 padding: 10px;
                 border: none;
                 font-weight: bold;
+                border-bottom: 2px solid #50C878;
             }
+            QTableWidget::item { padding: 8px; }
+            QTableWidget::item:selected { background-color: #333; color: #50C878; }
         """)
-        layout.addWidget(self.db_table)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        main_layout.addWidget(table)
+
+        # 2. Sidebar (Right Side)
+        sidebar = QVBoxLayout()
+        sidebar.setSpacing(10)
+        sidebar.setContentsMargins(5, 5, 5, 5)
+
+        btn_add = QPushButton("ADD")
+        btn_edit = QPushButton("EDIT")
+        btn_del = QPushButton("DELETE")
+        btn_save = QPushButton("SAVE")
+        
+        # Style buttons for sidebar
+        for b, color in [(btn_add, "#50C878"), (btn_edit, "#3498DB"), (btn_del, "#FF4B4B"), (btn_save, "#2D2D2D")]:
+            b.setFixedSize(90, 45)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            txt_color = "black" if color not in ["#2D2D2D", "#3498DB"] else "white"
+            b.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color};
+                    color: {txt_color};
+                    font-weight: bold;
+                    border-radius: 6px;
+                    font-size: 11px;
+                }}
+                QPushButton:hover {{
+                    opacity: 0.8;
+                }}
+            """)
+            sidebar.addWidget(b)
+        
+        sidebar.addStretch()
+        main_layout.addLayout(sidebar)
+
+        return container, btn_add, btn_edit, btn_del, btn_save, table
+
+    def init_storage_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(30, 20, 30, 0)
+        
+        # Header Area
+        header = QHBoxLayout()
+        title = QLabel("STORAGE SCAN")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF;")
+        
+        self.btn_start_storage = QPushButton("START STORAGE SCAN")
+        self.btn_start_storage.setFixedSize(160, 35)
+        self.btn_start_storage.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_start_storage.setStyleSheet("""
+            QPushButton {
+                background-color: #50C878; color: black; font-weight: bold; border-radius: 4px; font-size: 11px;
+            }
+            QPushButton:hover { background-color: #45B068; }
+        """)
+        
+        header.addWidget(title)
+        header.addStretch()
+        header.addWidget(self.btn_start_storage)
+        layout.addLayout(header)
+
+        info = QLabel("Identify potentially malicious APK files stored in internal storage (/sdcard/).")
+        info.setStyleSheet("color: #888888; font-size: 12px; margin-bottom: 15px;")
+        layout.addWidget(info)
+
+        # Results Area for Storage
+        self.storage_scroll = QScrollArea()
+        self.storage_scroll.setWidgetResizable(True)
+        self.storage_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.storage_scroll.setStyleSheet("background-color: transparent; border: none;")
+        self.storage_results_container = QWidget()
+        self.storage_results_layout = QVBoxLayout(self.storage_results_container)
+        self.storage_results_layout.setContentsMargins(0, 0, 5, 0)
+        self.storage_results_layout.setSpacing(2)
+        self.storage_results_layout.addStretch()
+        self.storage_scroll.setWidget(self.storage_results_container)
+        layout.addWidget(self.storage_scroll)
+        
         self.pages.addWidget(page)
 
     def init_placeholder_page(self, title_text, desc_text):

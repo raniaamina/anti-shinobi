@@ -5,6 +5,7 @@ Anti-Shinobi is a specialized Android mobile security and analysis tool. It conn
 ## 🚀 Key Features
 
 *   **📱 App Scanner**: Analyzes all installed applications on your device against a predefined (and customizable) database of known spyware (`spyware_db.json`), while also examining permissions and services (e.g., background location, hidden icons) to calculate a Risk Score.
+*   **🛡️ Multi-Layered Signature Verification**: Detects "Fake" or "Modded" apps by comparing digital certificates (Official Google DB, User-defined Trusted DB, and Heuristic Vendor Grouping).
 *   **🌐 Network Monitor**: Tracks real-time data usage (Upload/Download) per application. It identifies remote IP addresses, attempts reverse DNS lookups to find domain names, and allows you to manually flag suspicious connections.
 *   **💾 Storage Scan**: Scans the device's internal storage for potentially malicious or leftover APK files that are not installed but take up space or pose a risk.
 *   **📊 Transparent Heuristics**: The app doesn't just say "Safe" or "Dangerous". It explains *why* an app got its score based on weighted heuristics (e.g., `BIND_NOTIFICATION_LISTENER_SERVICE` adds +25 risk).

@@ -10,5 +10,100 @@
         "com.android.system.update",
         "com.google.android.sync.service",
         "com.android.backup.service"
+    ],
+    "trusted_signatures": [
+        {
+            "common_name": "NKRI Dev",
+            "organization": "Nenggala Kreatif Indonesia",
+            "fingerprint": [
+                "E713BA9E226E6E95D484F86507AD711A04D5CB6E932819E7E593A6153C2A8AB9"
+            ]
+        },
+        {
+            "common_name": "GrapheneOS",
+            "organization": "GrapheneOS",
+            "fingerprint": [
+                "6EBB65C5DAA95641F7A774EA35D26FF251575CB32E34A8A5D655B2742B57321F",
+                "C6ADB8B83C6D4C17D292AFDE56FD488A51D316FF8F2C11C5410223BFF8A7DBB3",
+                "6436B155B917C2F9A9ED1D15C4993A5968FFABC94947C13F2AEEE14B7B27ED59",
+                "F79E5F0EC0A0855EFD2027E05EB9EC9C196D5D047940BE603576E530867C3845",
+                "E5044303E85B4CCEAAE00ECF8823C9C6F937A8E3A2FB632EC9FA45B2C33B4BD1"
+            ]
+        },
+        {
+            "common_name": "Android",
+            "organization": "Google Inc.",
+            "fingerprint": [
+                "5F2391277B1DBD489000467E4C2FA6AF802430080457DCE2F618992E9DFB5402",
+                "7CE83C1B71F3D572FED04C8D40C5CB10FF75E6D87D9DF6FBD53F0468C2905053",
+                "226BB0439D6BAEAA5A397C586E7031D8ADDFAEC73C65BE212F4A5DBFBF621B92",
+                "E0AFECA77AF15AEE48A25EAD314C576F8F274682A8FBA3365610878F7C1DDB6B",
+                "7E26B6D5802A16799448AD635868F0345D6730310634684C0AE44E7E9F7EA764"
+            ]
+        },
+        {
+            "common_name": "SymbiotOS",
+            "organization": "SymbiotOS",
+            "fingerprint": [
+                "6C85589AF2A0F4E13C89233C76A5417F36FF7A0CCFD32430BC83A0EBEA5AFACD",
+                "4CEF3D73AC24E2EFC08EE191939F98B2571B5382702C3832F3EA3D94DA0B7DED",
+                "08C464D5EABC7A61D4807ED1FE752FDFAB19DB6BE6E2015E5A4CACC481FBBCD3",
+                "422D0763437205008CEA63FF92283B042D39F62AEEBE1641590CB5ACB315C56A",
+                "CE99A0B40A56030103BA4D5FFEE329C9A538EC860742FA28001152AAE1F11A92",
+                "0FC11153340FD17B7575E8B89D3230FC9CB53A63A51B865E94EE86CFC42781BF",
+                "C8E74263317F34E824171743BDA7FA554778244BCF7EA2A4E457941D91174690",
+                "6D9AA621C86C59E51727CE1E4570F2AB05281609F5DA4855367E7B160CAB668B"
+            ]
+        },
+        {
+            "common_name": "Symbiot",
+            "organization": "",
+            "fingerprint": "B3DB287369E5912863E0003F30B1151D34BE56F6E8CF48E412B6D8FE900EF655"
+        },
+        {
+            "common_name": "Symbiot",
+            "organization": "",
+            "fingerprint": "64A6B14C9D96EA5FBCE684879BCE2ABC61D657E3379ADA5A1829296A768A9B9B"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "D3B3210BF9DA7993E19D9C2BA6CE2CE7AE8A5B0A4CF7441D9370572AE7257F46"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "3AF39AB967AAA5D279E49B5F769CB66E40799838BC8799343EE57AE435D2455B"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "5FA42212AD403E22DD6EFE75F3F31184051FEF744C0B05BE5C73EDF60BF62C1E"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "E4D6A46D54ECE6CA90F4E87F67F5EC4F262FC55C2ED840ADBF649DE55FE49094"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "89DFB5047EE01929C2184D68EF4964F2A90AF124C3233828B8F640D9E6C00F83"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "F0FD6C5B410F25CB25C3B53346C8972FAE30F8EE7411DF910480AD6B2D60DB83"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "6A2F65EC694A6A632ACDCB5080912A565F903D4B8D83F0EB8E44FBDF2660D8E1"
+        },
+        {
+            "common_name": "Android",
+            "organization": "",
+            "fingerprint": "197F667AE126AF53A8A891B5D5C81D7C0E48223B3E828E51870A4AEADD9E8D9D"
+        }
     ]
 }
