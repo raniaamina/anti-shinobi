@@ -698,6 +698,7 @@ class AntiShinobiApp:
                 sig_item.setToolTip("\n".join(sigs))
                 self.window.table_trusted.setItem(row, 2, sig_item)
 
+            self.scanner.db_path = db_path
             self.scanner.load_db()
         except Exception as e:
             QMessageBox.critical(self.window, "DB Error", f"Failed to load database: {str(e)}")
