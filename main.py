@@ -650,8 +650,9 @@ class AntiShinobiApp:
             cmd.append("--version")
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
             
-            if proc.returncode == 0 and "apksigner" in proc.stdout.lower():
-                QMessageBox.information(self.window, "Test Success", f"Apksigner works correctly!\n\nOutput: {proc.stdout.strip()}")
+            # apksigner --version usually just outputs a number like "0.9"
+            if proc.returncode == 0:
+                QMessageBox.information(self.window, "Test Success", f"Apksigner works correctly!\n\nVersion: {proc.stdout.strip()}")
             else:
                 err_msg = proc.stderr.strip() if proc.stderr else proc.stdout.strip()
                 QMessageBox.warning(self.window, "Test Failed", f"Apksigner execution failed or returned unexpected output.\n\nCode: {proc.returncode}\nOutput: {err_msg}")
