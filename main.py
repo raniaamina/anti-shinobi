@@ -492,14 +492,31 @@ class AntiShinobiApp:
                     with open(db_path, "r") as f:
                         data = json.load(f)
                 
-                # Check if already exists
-                exists = any(s.get("fingerprint") == sig for s in data.get("trusted_signatures", []))
+                # Check if exact fingerprint already exists anywhere
+                exists = any(
+                    sig in (s.get("fingerprint") if isinstance(s.get("fingerprint"), list) else [s.get("fingerprint")])
+                    for s in data.get("trusted_signatures", [])
+                )
+                
                 if not exists:
-                    data["trusted_signatures"].append({
-                        "common_name": cn,
-                        "organization": org,
-                        "fingerprint": sig
-                    })
+                    # Find existing entry with same common_name
+                    cn_entry = next((s for s in data.get("trusted_signatures", []) if s.get("common_name") == cn), None)
+                    
+                    if cn_entry:
+                        # Consolidate into array
+                        current_fps = cn_entry.get("fingerprint")
+                        if isinstance(current_fps, list):
+                            if sig not in current_fps:
+                                current_fps.append(sig)
+                        else:
+                            cn_entry["fingerprint"] = [current_fps, sig] if current_fps else [sig]
+                    else:
+                        # Create new entry
+                        data["trusted_signatures"].append({
+                            "common_name": cn,
+                            "organization": org,
+                            "fingerprint": [sig] # Save as array by default now
+                        })
                     
                     with open(db_path, "w") as f:
                         json.dump(data, f, indent=4)
