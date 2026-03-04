@@ -501,6 +501,22 @@ class MainWindow(QMainWindow):
         """)
         apksigner_layout.addWidget(self.apksigner_input)
 
+        self.btn_test_apksigner = QPushButton("TEST")
+        self.btn_test_apksigner.setFixedWidth(80)
+        self.btn_test_apksigner.setFixedHeight(35)
+        self.btn_test_apksigner.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_test_apksigner.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: 1px solid #4B8BFF;
+                color: #4B8BFF;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #4B8BFF; color: black; }
+        """)
+        apksigner_layout.addWidget(self.btn_test_apksigner)
+
         self.btn_save_apksigner = QPushButton("SAVE")
         self.btn_save_apksigner.setFixedWidth(80)
         self.btn_save_apksigner.setFixedHeight(35)

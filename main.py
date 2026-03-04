@@ -158,6 +158,7 @@ class AntiShinobiApp:
         
         # Scan Settings
         self.window.thread_spin.valueChanged.connect(self.on_thread_changed)
+        self.window.btn_test_apksigner.clicked.connect(self.test_apksigner)
         self.window.btn_save_apksigner.clicked.connect(self.save_settings)
         self.window.btn_clear_cache.clicked.connect(self.confirm_clear_cache)
         
@@ -636,6 +637,28 @@ class AntiShinobiApp:
             self.scanner.load_db() # Reload DB in scanner to apply new path
         except Exception as e:
             QMessageBox.critical(self.window, "Error", f"Failed to save settings: {str(e)}")
+
+    def test_apksigner(self):
+        import subprocess
+        import shlex
+        
+        path = self.window.apksigner_input.text().strip()
+        if not path: path = "apksigner"
+            
+        try:
+            cmd = shlex.split(path)
+            cmd.append("--version")
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            
+            if proc.returncode == 0 and "apksigner" in proc.stdout.lower():
+                QMessageBox.information(self.window, "Test Success", f"Apksigner works correctly!\n\nOutput: {proc.stdout.strip()}")
+            else:
+                err_msg = proc.stderr.strip() if proc.stderr else proc.stdout.strip()
+                QMessageBox.warning(self.window, "Test Failed", f"Apksigner execution failed or returned unexpected output.\n\nCode: {proc.returncode}\nOutput: {err_msg}")
+        except FileNotFoundError:
+            QMessageBox.critical(self.window, "Path Error", f"The executable could not be found based on your path:\n\n{path}\n\nPlease check for typos.")
+        except Exception as e:
+            QMessageBox.critical(self.window, "Execution Error", f"An error occurred while trying to execute the path:\n\n{str(e)}")
 
     def get_db_path(self):
         config_dir = os.path.expanduser("~/.config/AntiShinobi")
