@@ -693,6 +693,9 @@ class AntiShinobiApp:
                 # Load settings into UI
                 self.window.apksigner_input.setText(settings.get("apksigner_path", "apksigner"))
                 
+            self.window.table_red_flags.blockSignals(True)
+            self.window.table_trusted.blockSignals(True)
+            
             self.window.table_red_flags.setRowCount(0)
             for pkg in spyware:
                 row = self.window.table_red_flags.rowCount()
@@ -721,6 +724,9 @@ class AntiShinobiApp:
                 sig_item.setData(Qt.ItemDataRole.UserRole, sigs)
                 sig_item.setToolTip("\n".join(sigs))
                 self.window.table_trusted.setItem(row, 2, sig_item)
+
+            self.window.table_red_flags.blockSignals(False)
+            self.window.table_trusted.blockSignals(False)
 
             self.scanner.db_path = db_path
             self.scanner.load_db()
