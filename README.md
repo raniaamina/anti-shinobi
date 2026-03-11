@@ -2,7 +2,7 @@
 
 Anti-Shinobi is a specialized Android mobile security and analysis tool. It connects to your Android device via ADB to scan for potential spyware, monitor real-time network traffic, and analyze storage for suspicious APK files using a transparent, heuristic-based risk scoring system.
 
-## 🚀 Key Features
+## Key Features
 
 *   **App Scanner**: Analyzes all installed applications on your device against a predefined (and customizable) database of known spyware (`spyware_db.json`), while also examining permissions and services (e.g., background location, hidden icons) to calculate a Risk Score.
 *   **Multi-Layered Signature Verification**: Detects "Fake" or "Modded" apps by comparing digital certificates (Official Google DB, User-defined Trusted DB, and Heuristic Vendor Grouping).
@@ -13,9 +13,10 @@ Anti-Shinobi is a specialized Android mobile security and analysis tool. It conn
 
 ## Requirements & Setup
 
-1.  **Python 3.10+** (Recommended to use a virtual environment).
-2.  **ADB (Android Debug Bridge)** installed on your system and accessible in your system's PATH.
-3.  **USB Debugging** enabled on your Android device (Developer Options -> USB Debugging).
+1. **Python 3.10+** (Recommended to use a virtual environment).
+2. apksigner package (please specify path in app dashboard)
+3. **ADB (Android Debug Bridge)** installed on your system and accessible in your system's PATH.
+4. **USB Debugging** enabled on your Android device (Developer Options -> USB Debugging).
 
 ### Installation
 
