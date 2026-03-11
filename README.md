@@ -69,4 +69,5 @@ Anti-Shinobi runs completely locally on your machine. No application data, scan 
 GNU GENERAL PUBLIC LICENSE Version 3
 
 ## Disclaimer
-This apps or extention is come without any warranty, so run it with your own risk :")
+This tool cannot provide any justification for the scanned applications, the tool only provides information based on the permissions used by the application and the certificate compliance if any to provide potential information that may be a security hole on the device.
+Anti-shinobi comes without any warranty, so run it with your own risk :")
