@@ -1087,7 +1087,7 @@ class MainWindow(QMainWindow):
         
         # Header Area
         header = QHBoxLayout()
-        title = QLabel("STORAGE SCAN")
+        title = QLabel("STORAGE SCAN (TBD)")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF;")
         
         self.btn_start_storage = QPushButton("START STORAGE SCAN")
